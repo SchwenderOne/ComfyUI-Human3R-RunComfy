@@ -40,6 +40,27 @@ can only be shaken out by the smoke test in Phase C, on RunComfy itself.
 
 ---
 
+## Live port progress (2026-06-18) — runtime fixes baked into the shipped pack
+Running the smoke test on RunComfy (torch 2.8 / ComfyUI 0.7) surfaced a chain of
+porting issues, each now fixed in the shipped `nodes.py` / pack:
+1. ✅ `No module named 'smplx'` — manual uploads don't auto-pip. Fixed by the deps
+   helper repo (`ComfyUI-Human3R-Deps`, install via Manager Git-URL).
+2. ✅ `No module named 'models.blocks'` — croco's bundled top-level `models`
+   (a namespace package) was shadowed by another node's regular `models`. Fixed in
+   `nodes.py` via `_ensure_croco_imports()` (binds `sys.modules['models']` to
+   croco's models dir before importing dust3r). Logs a marker line when active.
+3. ✅ RoPE crash without curope — already fixed earlier (pure-PyTorch fallback
+   patch in `pos_embed.py`); the expected log line `cannot find cuda-compiled
+   version of RoPE2D, using a slow pytorch version` confirms it.
+4. ✅ `UnpicklingError: omegaconf.dictconfig.DictConfig was not an allowed global`
+   — torch ≥2.6 defaults `torch.load(weights_only=True)`; the checkpoint stores
+   omegaconf configs. Fixed in `nodes.py` load_model: scoped `weights_only=False`
+   override (trusted official HF checkpoint) around `from_pretrained`.
+
+**Next unknown:** whether the run completes after fix #4, or surfaces another
+torch-2.8 difference. The shipped `nodes.py` (≈14.6 KB, in the bundle repo +
+`runcomfy/nodes.py`) contains fixes #2 and #4; the tarball/pack contains all four.
+
 ## PHASE A — environment probe ✅ DONE
 Already run via the `ComfyUI-EnvProbe` node; result recorded above. Nothing to do
 unless RunComfy later changes its machine image — if a run misbehaves, re-run the
@@ -57,6 +78,14 @@ Git URL → add **Env Probe** → Queue Prompt) and send Claude the versions.
    works if its file browser can extract archives — **TODO: verify what RunComfy's
    file browser actually supports (folder upload? archive extraction?)**; until
    confirmed, prefer the Mac-extract-then-drag-drop route.
+   **⚠️ File-placement gotcha (cost hours):** the node file is
+   `ComfyUI-Human3R/nodes.py` at the **pack ROOT — beside `__init__.py`,
+   `requirements.txt`, and the `human3r_src/` folder**. When replacing just
+   `nodes.py` later, it must go there, NOT inside `human3r_src/`. The RunComfy file
+   browser silently put earlier single-file uploads into `human3r_src/`, so ComfyUI
+   kept importing the original pack-root file (no error changed, no marker line).
+   To confirm a replacement took: check the file's byte size and look for the
+   `[Human3R] _ensure_croco_imports …` marker line in the log.
 2. **Install the pip deps** — ⚠️ a manually-uploaded folder does **NOT** get its
    `requirements.txt` auto-installed (only Manager's *Install via Git URL* runs
    pip; the startup "installing dependencies done." line is for other nodes). The

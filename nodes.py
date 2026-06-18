@@ -240,7 +240,23 @@ class Human3RModelLoader:
         print(f"[Human3R] Loading model from {model_path} ...")
         from dust3r.model import ARCroco3DStereo
 
-        model = ARCroco3DStereo.from_pretrained(model_path).to(device)
+        # torch >= 2.6 defaults torch.load(weights_only=True), which rejects the
+        # omegaconf config objects stored inside the Human3R checkpoint
+        # (UnpicklingError: Unsupported global omegaconf.dictconfig.DictConfig).
+        # The checkpoint is from the official (trusted) HF repo, so load the full
+        # pickle. Scope the override to just this call so torch.load is unchanged
+        # for every other node.
+        _orig_torch_load = torch.load
+
+        def _full_pickle_load(*args, **kwargs):
+            kwargs["weights_only"] = False
+            return _orig_torch_load(*args, **kwargs)
+
+        torch.load = _full_pickle_load
+        try:
+            model = ARCroco3DStereo.from_pretrained(model_path).to(device)
+        finally:
+            torch.load = _orig_torch_load
         model.eval()
         Human3RModelLoader._cache[cache_key] = model
         print(f"[Human3R] Model loaded on {device}.")

@@ -1,0 +1,86 @@
+{
+  "last_node_id": 2,
+  "last_link_id": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Human3RModelLoader",
+      "pos": [120, 200],
+      "size": [430, 110],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "HUMAN3R_MODEL",
+          "links": [1],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Human3RModelLoader"
+      },
+      "widgets_values": [
+        "/workspace/ComfyUI/custom_nodes/ComfyUI-Human3R/human3r_src/human3r_672S.pth",
+        "cuda"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "Human3RVideoInference",
+      "pos": [620, 200],
+      "size": [460, 280],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "HUMAN3R_MODEL",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output_dir",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0
+        },
+        {
+          "name": "frame_count",
+          "type": "INT",
+          "links": null,
+          "slot_index": 1
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Human3RVideoInference"
+      },
+      "widgets_values": [
+        "/workspace/ComfyUI/input/GoodMornin1.mp4",
+        "/workspace/ComfyUI/output/human3r_smoke",
+        512,
+        5,
+        10,
+        100,
+        false
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "HUMAN3R_MODEL"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

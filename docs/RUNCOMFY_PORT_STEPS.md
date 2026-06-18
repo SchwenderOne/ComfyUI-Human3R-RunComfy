@@ -49,13 +49,23 @@ Git URL → add **Env Probe** → Queue Prompt) and send Claude the versions.
 ---
 
 ## PHASE B — install the pack + checkpoint
-1. Upload **`ComfyUI-Human3R-runcomfy.tar.gz`** via the web file browser into
-   `ComfyUI/custom_nodes/` and extract it there (giving
-   `ComfyUI/custom_nodes/ComfyUI-Human3R/`).
-2. Let ComfyUI Manager run `pip install -r requirements.txt` for the pack. The
-   probe showed **smplx and roma are missing** on RunComfy, so they will be
-   installed now (plus scipy/accelerate/huggingface-hub/etc. — all pure-Python).
-   Do **not** let anything upgrade/downgrade torch.
+1. Get the pack into `ComfyUI/custom_nodes/` as
+   `ComfyUI/custom_nodes/ComfyUI-Human3R/`. **Reliable way (confirmed approach):**
+   extract the `.tar.gz` on your Mac (Finder double-click → `ComfyUI-Human3R`
+   folder) and **drag-drop that folder** into the web file browser under
+   `custom_nodes/`. Uploading the raw tarball and extracting it *on* RunComfy only
+   works if its file browser can extract archives — **TODO: verify what RunComfy's
+   file browser actually supports (folder upload? archive extraction?)**; until
+   confirmed, prefer the Mac-extract-then-drag-drop route.
+2. **pip deps install automatically at startup** — you do NOT run pip by hand.
+   RunComfy's ComfyUI-Manager scans `custom_nodes/*/requirements.txt` on boot and
+   installs them with `uv` (the startup log prints "ComfyUI-Manager: installing
+   dependencies done."). So a **Restart** after step 1 triggers the install of
+   `smplx`, `roma`, etc. (the probe showed smplx+roma missing; numpy/trimesh/einops/
+   cv2 already present). Do **not** let anything upgrade/downgrade torch. Verify in
+   the Logs: the `ComfyUI-Human3R` line under "Import times for custom nodes" must
+   NOT say `(IMPORT FAILED)`. If a dep is still missing, Manager → **Restart** to
+   re-run the scan, and report the missing module to Claude.
 3. Download the checkpoint `human3r_672S.pth` (3.39 GB) into the pack at
    **`ComfyUI-Human3R/human3r_src/human3r_672S.pth`** (the loader's default path).
    Use RunComfy's in-platform **download-from-URL** from HuggingFace; the in-pack

@@ -40,6 +40,15 @@ can only be shaken out by the smoke test in Phase C, on RunComfy itself.
 
 ---
 
+## 🛑 PERSISTENCE — read before doing anything
+RunComfy persists **only** what you **Cloud Save**. Uploaded custom-node folders,
+the downloaded checkpoint, and pip-installed deps all live on the running machine
+and are **destroyed when it's terminated** unless snapshotted. We learned this the
+hard way (2026-06-18: a terminate wiped the whole setup). **Order of operations:**
+upload pack → install deps repo → download checkpoint → **Cloud Save now** (locks
+in the 3.4 GB checkpoint + deps) → iterate on `nodes.py` → **Cloud Save again after
+a green run**. Never terminate without Cloud Saving.
+
 ## Live port progress (2026-06-18) — runtime fixes baked into the shipped pack
 Running the smoke test on RunComfy (torch 2.8 / ComfyUI 0.7) surfaced a chain of
 porting issues, each now fixed in the shipped `nodes.py` / pack:

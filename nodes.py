@@ -27,39 +27,46 @@ _DEFAULT_MODEL_PATH = os.path.join(_SRC_DIR, "human3r_672S.pth")
 
 
 def _ensure_croco_imports():
-    """Make croco's bundled top-level ``models`` package win over any OTHER ComfyUI
-    custom node that also registers a top-level ``models``.
+    """Force croco's bundled top-level ``models`` package to win over any OTHER
+    ComfyUI custom node that also ships a top-level ``models``.
 
-    croco uses absolute imports (``from models.blocks import Mlp``), and
-    ``dust3r.heads`` imports them *before* dust3r's own ``path_to_croco`` adds
-    croco to ``sys.path``. On a busy ComfyUI (many custom nodes) the name
-    ``models`` then resolves to the wrong package, raising
-    ``No module named 'models.blocks'``. Fix: put croco first on ``sys.path`` and
-    drop any cached foreign ``models`` so the re-import resolves to ours.
+    croco uses absolute imports (``from models.blocks import Mlp``) and its
+    ``models`` dir has NO ``__init__.py`` (a namespace package). On a busy ComfyUI
+    another node may ship a *regular* ``models`` package (with ``__init__.py``),
+    which Python prefers over a namespace package regardless of sys.path order — so
+    merely reordering sys.path is not enough. We bind ``sys.modules['models']``
+    directly to croco's models dir before importing dust3r, evicting any foreign
+    ``models`` first.
     """
+    import types
+    print("[Human3R] _ensure_croco_imports (croco models namespace fix active)", flush=True)
     croco = os.path.join(_SRC_DIR, "croco")
-    if not os.path.isdir(croco):
+    models_dir = os.path.join(croco, "models")
+    if not os.path.isdir(models_dir):
         return
-    if croco in sys.path:
-        sys.path.remove(croco)
-    sys.path.insert(0, croco)
-    croco_abs = os.path.abspath(croco)
+    for p in (croco, _SRC_DIR):
+        if p in sys.path:
+            sys.path.remove(p)
+        sys.path.insert(0, p)
+    models_abs = os.path.abspath(models_dir)
 
-    def _under_croco(mod):
+    def _is_ours(mod):
+        for pp in (getattr(mod, "__path__", None) or []):
+            if os.path.abspath(pp) == models_abs:
+                return True
         f = getattr(mod, "__file__", None)
-        if f:
-            return os.path.abspath(f).startswith(croco_abs)
-        return any(
-            os.path.abspath(pp).startswith(croco_abs)
-            for pp in (getattr(mod, "__path__", None) or [])
-        )
+        return bool(f) and os.path.abspath(f).startswith(models_abs)
 
-    for name in list(sys.modules):
-        if name == "models" or name.startswith("models."):
-            mod = sys.modules.get(name)
-            if mod is not None and not _under_croco(mod):
+    current = sys.modules.get("models")
+    if current is None or not _is_ours(current):
+        for name in list(sys.modules):
+            if name == "models" or name.startswith("models."):
                 del sys.modules[name]
-
+        pkg = types.ModuleType("models")
+        pkg.__path__ = [models_dir]
+        pkg.__package__ = "models"
+        sys.modules["models"] = pkg
+        print("[Human3R] bound 'models' -> %s" % models_dir, flush=True)
 
 def _extract_frames(video_path, subsample=1, max_frames=None):
     """Extract frames from video or directory into a temp dir. Returns (img_paths, tmpdir)."""
